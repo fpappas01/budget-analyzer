@@ -1,4 +1,4 @@
-# Financial Behaviour Anaylyzer
+# Financial Behaviour Analyzer
 
 ## Get started
 
