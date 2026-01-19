@@ -4,7 +4,6 @@ import { StyleSheet, Text, View } from "react-native";
 export default function Index() {
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>Budgety</Text>
       <Text> Add Income</Text>
       <Text>Add Expense</Text>
 
