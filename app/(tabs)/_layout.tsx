@@ -18,17 +18,32 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="tools"
+        name="transactions"
         options={{
-          title: "Tools",
+          title: "Transactions",
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              name={focused ? "hammer" : "hammer-outline"}
+              name={focused ? "list" : "list-outline"}
               size={24}
               color={color}
             />
           ),
         }}
+      />
+      <Tabs.Screen 
+        name="analysis"
+        options={
+          {
+            title: "Analysis",
+            tabBarIcon: ({ color, focused }) => ( 
+              <Ionicons
+                name={focused ? "bar-chart" : "bar-chart-outline"}
+                size={24}
+                color={color}
+              />
+            ),
+          }
+        }
       />
     </Tabs>
   );
