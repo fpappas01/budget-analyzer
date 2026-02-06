@@ -1,22 +1,127 @@
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, SectionList } from "react-native";
+import { useSQLiteContext } from "expo-sqlite";
+import { useEffect, useState } from "react";
 
+type RowObj = {
+  id: number;
+  type: "income" | "expense";
+  value: number;
+  description: string;
+  month_year: string;
+};
 
 export default function TransactionsScreen() {
+  const db = useSQLiteContext();
+  const [transactions, setTransactions] = useState<{ title: string; data: RowObj[] }[]>([]);
+  useEffect(() => {
+    const fetchData = async () => {
+      const it = await db.getEachAsync<RowObj>(`
+      SELECT id, type, value, description, STRFTIME('%Y-%m', created_at) as month_year  
+      FROM transactions 
+      ORDER BY created_at DESC;`);
 
+      const temp_arr: RowObj[] = [];
+
+      for await (const row of it) {
+        temp_arr.push(row);
+      }
+
+      const grouped: Record<string, RowObj[]> = {};
+      temp_arr.forEach((transaction) => {
+        if (!grouped[transaction.month_year]) {
+          grouped[transaction.month_year] = [];
+        }
+        grouped[transaction.month_year].push(transaction);
+      });
+
+      const sections = Object.keys(grouped).map(month_year => ({
+        title: month_year,
+        data: grouped[month_year],
+      }));
+      setTransactions(sections);
+    };
+
+    fetchData();
+    
+  }, [db]);
   return (
-    <View style={styles.container}>
-        <Text>Transactions Screen</Text>
-        <Text> SOmetin sdfsdf</Text>
-    </View>
-  );
-}
+  <View style={styles.container}>
+    <Text style={styles.title}>Transactions</Text>
 
+    <SectionList
+      sections={transactions}
+      keyExtractor={(item) => item.id.toString()}
+      renderSectionHeader={({ section: { title } }) => (
+        <Text style={styles.monthYearHeader}>{title}</Text>
+      )}
+      renderItem={({ item }) => (
+        <View style={styles.card}>
+          <View style={styles.row}>
+            {/* <Text style={styles.type}>{item.type}</Text> */}
+            <Text style={[styles.value, {color: item.type === "income" ? '#2e7d32' : '#aa0619'}]}>€{item.value}</Text>
+          </View>
+          <Text style={styles.description}>
+            {item.description}
+          </Text>
+        </View>
+      )}
+    />
+  </View>
+);
+
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#9c7676",
-    justifyContent: 'center',
-    alignItems: 'center',
+    padding: 20,
+  },
+
+  title: {
+    fontSize: 26,
+    fontWeight: "bold",
+    color: "#fff",
+    marginBottom: 10,
+    textAlign: "center",
+  },
+
+  monthYearHeader: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#fff",
+    marginTop: 20,
+    marginBottom: 8,
+  },
+
+  card: {
+    backgroundColor: "#fff",
+    padding: 14,
+    borderRadius: 10,
+    marginBottom: 10,
+    elevation: 3,
+  },
+
+  row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
+
+  type: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+
+  value: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#2e7d32",
+  },
+
+  description: {
+    fontSize: 14,
+    color: "#666",
   },
 });
+
