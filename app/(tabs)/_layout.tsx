@@ -30,7 +30,7 @@ export default function TabLayout() {
           ),
         }}
       />
-      <Tabs.Screen 
+      {/* <Tabs.Screen 
         name="analysis"
         options={
           {
@@ -44,7 +44,7 @@ export default function TabLayout() {
             ),
           }
         }
-      />
+      /> */}
     </Tabs>
   );
 }

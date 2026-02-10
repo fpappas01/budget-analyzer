@@ -1,5 +1,6 @@
 import { Stack } from "expo-router";
 import { SQLiteProvider } from "expo-sqlite";
+import Db from "./database/db";
 
 export default function RootLayout() {
   return (
@@ -9,6 +10,7 @@ export default function RootLayout() {
       // useSuspense={true}
       options={{ useNewConnection: false }}
     >
+      <Db />
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       </Stack>

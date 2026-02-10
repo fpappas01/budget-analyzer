@@ -1,6 +1,14 @@
-import { View, Text, StyleSheet, SectionList } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  SectionList,
+  Button,
+  Alert,
+} from "react-native";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
+import Form from "../components/form";
 
 type RowObj = {
   id: number;
@@ -34,41 +42,90 @@ export default function TransactionsScreen() {
         grouped[transaction.month_year].push(transaction);
       });
 
-      const sections = Object.keys(grouped).map(month_year => ({
+      const sections = Object.keys(grouped).map((month_year) => ({
         title: month_year,
         data: grouped[month_year],
       }));
+
       setTransactions(sections);
     };
 
     fetchData();
-    
   }, [db]);
+
+  const handleDelete = (item_id: number) => {
+    
+    
+    Alert.alert(
+      "Delete transaction",
+      "Are you sure you want to delete this transaction?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            await db.runAsync(
+              `DELETE FROM transactions WHERE id = ${item_id};`,
+            );
+
+            setTransactions((prevSections) =>
+              prevSections
+                .map((section) => ({
+                  ...section,
+                  data: section.data.filter((transaction) => transaction.id !== item_id),
+                }))
+                .filter((section) => section.data.length > 0),
+            );
+          },
+        },
+      ],
+    );
+  };
+
+  const handleEdit = (item_id: number) => {
+
+  };
+
+  // const handleAddTransaction = async () => {
+    
+  // };
+
   return (
-  <View style={styles.container}>
-    <Text style={styles.title}>Transactions</Text>
+    <View style={styles.container}>
+      {/* <Text style={styles.title}>Transactions</Text> */}
 
-    <SectionList
-      sections={transactions}
-      keyExtractor={(item) => item.id.toString()}
-      renderSectionHeader={({ section: { title } }) => (
-        <Text style={styles.monthYearHeader}>{title}</Text>
-      )}
-      renderItem={({ item }) => (
-        <View style={styles.card}>
-          <View style={styles.row}>
-            {/* <Text style={styles.type}>{item.type}</Text> */}
-            <Text style={[styles.value, {color: item.type === "income" ? '#2e7d32' : '#aa0619'}]}>€{item.value}</Text>
+      <SectionList
+        sections={transactions}
+        keyExtractor={(item) => item.id.toString()}
+        renderSectionHeader={({ section: { title } }) => (
+          <Text style={styles.monthYearHeader}>{title}</Text>
+        )}
+        renderItem={({ item }) => (
+          <View style={styles.card}>
+            <View style={styles.row}>
+              {/* <Text style={styles.type}>{item.type}</Text> */}
+              <Button title="Edit" onPress={() => handleEdit(item.id)} />
+              <Button title="Delete" onPress={() => handleDelete(item.id)} />
+              <Text
+                style={[
+                  styles.value,
+                  { color: item.type === "income" ? "#2e7d32" : "#aa0619" },
+                ]}
+              >
+                {item.value}
+              </Text>
+            </View>
+            <Text style={styles.description}>{item.description}</Text>
           </View>
-          <Text style={styles.description}>
-            {item.description}
-          </Text>
-        </View>
-      )}
-    />
-  </View>
-);
+        )}
+      />
 
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -124,4 +181,3 @@ const styles = StyleSheet.create({
     color: "#666",
   },
 });
-
