@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { Button, Dimensions, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import {  Dimensions, StyleSheet, Text, View } from "react-native";
 import { LineChart } from "react-native-chart-kit";
 import { useSQLiteContext } from "expo-sqlite";
-import { useForm, SubmitHandler } from "react-hook-form"
+
 import Form from "../components/form";
 
 // const month = new Date().toLocaleString("default", { month: "long" });
@@ -22,8 +22,8 @@ type Inputs = {
 
 
 export default function Index() {
-  const [income, setIncome] = useState<number[]>([]);
-  const [expenses, setExpenses] = useState<number[]>([]);
+  const [income, setIncome] = useState<number[]>([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+  const [expenses, setExpenses] = useState<number[]>([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
   const [year, setYear] = useState(new Date().getFullYear());
 
   const db = useSQLiteContext();
@@ -174,7 +174,7 @@ export default function Index() {
           borderRadius: 16,
         }}
       />
-    <Form />
+    <Form type="expense" category="" description="" amount="" renderForm={false} edit={false}/>
       {/* <Button title="Add Transaction" onPress={handleAddTransaction}/> */}
     </View>
   );

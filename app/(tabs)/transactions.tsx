@@ -21,6 +21,8 @@ type RowObj = {
 export default function TransactionsScreen() {
   const db = useSQLiteContext();
   const [transactions, setTransactions] = useState<{ title: string; data: RowObj[] }[]>([]);
+  const [renderForm, setRenderForm] = useState(false);
+  const [rowObj, setRowObj] = useState<RowObj>();
   useEffect(() => {
     const fetchData = async () => {
       const it = await db.getEachAsync<RowObj>(`
@@ -87,7 +89,18 @@ export default function TransactionsScreen() {
   };
 
   const handleEdit = (item_id: number) => {
-
+    let tmp_obj: RowObj | undefined = undefined;
+    for (let section of transactions) {
+      for (let transaction of section.data) {
+        if (transaction.id === item_id) {
+          setRowObj(transaction);
+          setRenderForm(true);
+        }
+      }
+    }
+    
+    console.log(transactions);
+    
   };
 
   // const handleAddTransaction = async () => {
@@ -95,10 +108,14 @@ export default function TransactionsScreen() {
   // };
 
   return (
+    
     <View style={styles.container}>
       {/* <Text style={styles.title}>Transactions</Text> */}
 
+      {renderForm && <Form type="expense" category="" description="" amount={""} renderForm={renderForm} edit={true} item_id={rowObj?.id}/>}
+
       <SectionList
+      
         sections={transactions}
         keyExtractor={(item) => item.id.toString()}
         renderSectionHeader={({ section: { title } }) => (

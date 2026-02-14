@@ -1,67 +1,65 @@
-import AntDesign from "@expo/vector-icons/AntDesign";
-import DateTimePicker, {
-  DateTimePickerEvent,
-} from "@react-native-community/datetimepicker";
-import { DatePicker, DatePickerHandle } from "@s77rt/react-native-date-picker";
-import React, { useEffect, useRef, useState } from "react";
+
+import DropDownPicker from "react-native-dropdown-picker";
+
+import React, { useEffect, useState } from "react";
+import FontAwesome from "@expo/vector-icons/FontAwesome";
 import {
   Modal,
   Pressable,
   StyleSheet,
   View,
   Text,
-  // TextInput,
-  Button,
+  TextInput,
   KeyboardAvoidingView,
   ScrollView,
   Platform,
 } from "react-native";
-import { TextInput } from "react-native-paper";
-import { SafeAreaView } from "react-native-safe-area-context";
-
-import { Picker } from "@react-native-picker/picker";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { DatePickerModal } from "react-native-paper-dates";
 import { useSQLiteContext } from "expo-sqlite";
+import { Button } from "react-native-paper";
 
 type CategoryRow = {
   id: number;
   name: string;
 };
 
-type AndroidMode = "date" | "time" | undefined;
+type formProps = {
+  type: "income" | "expense";
+  amount: string;
+  description: string;
+  category: string;
+  renderForm: boolean;
+  edit: boolean;
+  item_id?: number;
+};
 
-export default function Form() {
+
+export default function Form( props: formProps ) {
   const db = useSQLiteContext();
-  const [modalVisible, setModalVisible] = useState(false);
-  const [amount, setAmount] = useState("");
-  const [description, setDescription] = useState("");
-  const [type, setType] = useState("expense");
+  const [modalVisible, setModalVisible] = useState(props.renderForm ? props.renderForm : false);
+  const [amount, setAmount] = useState(props.amount ? props.amount : "");
+  const [description, setDescription] = useState(props.description);
+  const [type, setType] = useState<string>(props.type);
   const [categories, setCategories] = useState<CategoryRow[]>([]);
-  const [category, setCategory] = useState("");
-  const [date, setDate] = useState<Date>(new Date(1598051730000));
-  const [mode, setMode] = useState<AndroidMode>("date");
-  const [show, setShow] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
+  const [category, setCategory] = useState(props.category);
+  const [date, setDate] = useState<Date>(new Date());
+  const [open, setOpen] = React.useState(false);
+  const [openType, setOpenType] = useState(false);
+  const [openCategory, setOpenCategory] = useState(false);
+  const onDismissSingle = React.useCallback(() => {
+    setOpen(false);
+  }, [setOpen]);
 
-  const onChange = (
-    event: DateTimePickerEvent,
-    selectedDate?: Date | undefined,
-  ) => {
-    let currentDate: Date = date;
-    if (selectedDate) {
-      currentDate = selectedDate;
-      setDate(currentDate);
-    }
-    setShow(false);
-  };
+  const onConfirmSingle = React.useCallback(
+    (params: any) => {
+      setOpen(false);
+      setDate(params.date);
+    },
+    [setOpen, setDate],
+  );
 
-  const showMode = (currentMode: AndroidMode) => {
-    setShow(true);
-    setMode(currentMode);
-  };
-
-  const showDatepicker = () => {
-    showMode("date");
-  };
+const edit = props.edit;
 
   useEffect(() => {
     const temp_categories: CategoryRow[] = [];
@@ -79,7 +77,28 @@ export default function Form() {
     fetchCategories();
   }, [db]);
 
-  const addTransaction = async () => {
+  const handleUpdateTransaction = async (item_id: number) => {
+    let categoryId: number = -1;
+    for (let el of categories) {
+      if (el.name === category) {
+        categoryId = el.id;
+        break;
+      }
+    }
+    if (categoryId === -1) throw new Error("Could not find category id.");
+    try {
+      await db.runAsync(
+        `UPDATE transactions SET type = ?, value = ?, description = ?, category_id = ?, created_at = ? WHERE id = ?`,
+        [type, amount, description, categoryId, date.toISOString(), item_id],
+      );
+
+      setModalVisible(false);
+    } catch (error) {
+      
+    }
+  } 
+
+  const handleAddTransaction = async () => {
     let categoryId: number = -1;
     for (let el of categories) {
       if (el.name === category) {
@@ -105,18 +124,15 @@ export default function Form() {
     setType("expense");
     setCategory("");
   };
-  const datePickerRef = useRef<DatePickerHandle>(null);
   return (
     <View style={styles.container}>
-      {/* <Pressable onPress={() => setModalVisible(true)}>
-        <AntDesign name="file-add" size={50} color="black" />
-      </Pressable> */}
       <Button
-        title="Add Transaction"
         onPress={() => {
           setModalVisible(true);
         }}
-      />
+      >
+        Add Transaction
+      </Button>
       <Modal
         animationType="slide"
         transparent={true}
@@ -133,30 +149,21 @@ export default function Form() {
               keyboardShouldPersistTaps="handled"
             >
               <Text style={styles.title}>New Transaction</Text>
-
               <Text style={styles.label}>Type</Text>
-              <View style={styles.pickerContainer}>
-                <Picker
-                  mode="dropdown"
-                  selectedValue={type}
-                  onValueChange={(newVal) => setType(newVal)}
-                >
-                  <Picker.Item label="Expense" value={"expense"} />
-                  <Picker.Item label="Income" value={"income"} />
-                </Picker>
-              </View>
-
-              <Text style={styles.label}>Category</Text>
-              <View style={styles.pickerContainer}>
-                <Picker
-                  mode="dropdown"
-                  selectedValue={category}
-                  onValueChange={(newVal) => setCategory(newVal)}
-                >
-                  {categories.map((el) => (
-                    <Picker.Item key={el.id} label={el.name} value={el.name} />
-                  ))}
-                </Picker>
+              <View style={styles.container}>
+                <DropDownPicker
+                  open={openType}
+                  value={type}
+                  items={[
+                    { label: "Expense", value: "expense" },
+                    { label: "Income", value: "income" },
+                  ]}
+                  setOpen={setOpenType}
+                  setValue={setType}
+                  placeholder="Select a type"
+                  listMode="SCROLLVIEW"
+                  style={styles.dropdown}
+                />
               </View>
 
               <Text style={styles.label}>Amount</Text>
@@ -165,8 +172,24 @@ export default function Form() {
                 keyboardType="numeric"
                 value={amount}
                 onChangeText={setAmount}
-                returnKeyType="done"
               />
+
+              <Text style={styles.label}>Category</Text>
+              <View style={styles.container}>
+                <DropDownPicker
+                  open={openCategory}
+                  value={category}
+                  items={categories.map((el) => ({
+                    label: el.name,
+                    value: el.name,
+                  }))}
+                  setOpen={setOpenCategory}
+                  setValue={setCategory}
+                  placeholder="Select a category"
+                  listMode="SCROLLVIEW"
+                  style={styles.dropdown}
+                />
+              </View>
 
               <Text style={styles.label}>Description</Text>
               <TextInput
@@ -174,59 +197,50 @@ export default function Form() {
                 value={description}
                 onChangeText={setDescription}
               />
+              <Text style={styles.label}>Date</Text>
 
-              <SafeAreaView>
-                <Pressable>
-                  <Text style={styles.label}> Date </Text>
+              <View style={styles.dateInputContainer}>
+                <TextInput
+                  style={styles.dateInput}
+                  value={date?.toLocaleDateString()}
+                  editable={false}
+                />
+
+                <Pressable
+                  onPress={() => setOpen(true)}
+                  style={styles.iconContainer}
+                >
+                  <FontAwesome name="calendar" size={24} color="black" />
                 </Pressable>
-                
-                <Button title="Pick a Date" onPress={showDatepicker} />
-                {/* <TextInput 
-                style={styles.input}
-                value={date?.toLocaleDateString()}
-                editable={false}
-                onFocus={showDatepicker}
-                onBlur={() => {setShow(false)}}
-                
-                /> */}
-                {/* <Pressable onPress={() => showDatepicker()}>
-                  <View pointerEvents="none">
-                    <TextInput
-                      style={styles.input}
-                      value={date?.toLocaleDateString()}
-                      editable={true}
-                      right={
-                        <TextInput.Icon
-                          icon={"calendar"}
-                          onPress={showDatepicker}
-                        />
-                      }
-                      // onFocus={showDatepicker}
-                      // onBlur={() => {
-                      //   setShow(false);
-                      // }}
-                    />
-                  </View>
-                </Pressable> */}
+              </View>
 
-                
-
-                {show && (
-                  <DateTimePicker
-                    maximumDate={new Date()}
-                    testID="dateTimePicker"
-                    value={date}
-                    mode={mode}
-                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                    is24Hour={true}
-                    onChange={onChange}
+              <SafeAreaProvider>
+                <View
+                  style={{
+                    marginTop: 10,
+                    justifyContent: "center",
+                    flex: 1,
+                    alignItems: "center",
+                  }}
+                >
+                  <DatePickerModal
+                    locale="en"
+                    endYear={new Date().getFullYear()}
+                    presentationStyle="pageSheet"
+                    allowEditing={false}
+                    saveLabel="Save"
+                    mode="single"
+                    visible={open}
+                    onDismiss={onDismissSingle}
+                    date={date}
+                    onConfirm={onConfirmSingle}
                   />
-                )}
-              </SafeAreaView>
+                </View>
+              </SafeAreaProvider>
 
               <View style={styles.buttons}>
-                <Pressable style={styles.button} onPress={addTransaction}>
-                  <Text style={styles.buttonText}>Add</Text>
+                <Pressable style={styles.button} onPress={edit ? () => handleUpdateTransaction(props.item_id!) : handleAddTransaction}>
+                  <Text style={styles.buttonText}>{edit ? "Update" : "Add"}</Text>
                 </Pressable>
 
                 <Pressable
@@ -245,6 +259,14 @@ export default function Form() {
 }
 
 const styles = StyleSheet.create({
+  containerF: {
+    marginTop: 100,
+    paddingHorizontal: 20,
+    zIndex: 1000,
+  },
+  dropdown: {
+    borderColor: "#140505",
+  },
   container: {
     flex: 1,
     justifyContent: "center",
@@ -262,7 +284,7 @@ const styles = StyleSheet.create({
 
   modalView: {
     backgroundColor: "white",
-    padding: 20,
+    padding: 15,
     borderRadius: 10,
     elevation: 5,
   },
@@ -273,10 +295,10 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: "#ccc",
+    borderColor: "#140505",
     padding: 10,
-    marginBottom: 10,
-    borderRadius: 5,
+    marginBottom: 5,
+    borderRadius: 8,
   },
   buttons: {
     flexDirection: "row",
@@ -302,8 +324,25 @@ const styles = StyleSheet.create({
 
   pickerContainer: {
     borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 5,
+    borderColor: "#140505",
+    borderRadius: 8,
     marginBottom: 10,
+  },
+  dateInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#140505",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+  },
+
+  dateInput: {
+    flex: 1,
+    height: 40,
+  },
+
+  iconContainer: {
+    paddingLeft: 8,
   },
 });
