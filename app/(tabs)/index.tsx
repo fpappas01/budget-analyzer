@@ -62,12 +62,6 @@ export default function Index() {
   //   formState: { errors },
   // } = useForm<Inputs>()
 
-  const handleAddTransaction = async () => {
-    await db.runAsync(
-      ``
-    );
-  };
-
 
   return (
     <View style={styles.container}>
@@ -175,7 +169,6 @@ export default function Index() {
         }}
       />
     <Form type="expense" category="" description="" amount="" renderForm={false} edit={false}/>
-      {/* <Button title="Add Transaction" onPress={handleAddTransaction}/> */}
     </View>
   );
 }

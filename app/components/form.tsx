@@ -1,4 +1,3 @@
-
 import DropDownPicker from "react-native-dropdown-picker";
 
 import React, { useEffect, useState } from "react";
@@ -13,6 +12,7 @@ import {
   KeyboardAvoidingView,
   ScrollView,
   Platform,
+  Alert,
 } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { DatePickerModal } from "react-native-paper-dates";
@@ -32,12 +32,14 @@ type formProps = {
   renderForm: boolean;
   edit: boolean;
   item_id?: number;
+  onClose?: () => void;
 };
 
-
-export default function Form( props: formProps ) {
+export default function Form(props: formProps) {
   const db = useSQLiteContext();
-  const [modalVisible, setModalVisible] = useState(props.renderForm ? props.renderForm : false);
+  const [modalVisible, setModalVisible] = useState(
+    props.renderForm ? props.renderForm : false,
+  );
   const [amount, setAmount] = useState(props.amount ? props.amount : "");
   const [description, setDescription] = useState(props.description);
   const [type, setType] = useState<string>(props.type);
@@ -59,7 +61,7 @@ export default function Form( props: formProps ) {
     [setOpen, setDate],
   );
 
-const edit = props.edit;
+  const edit = props.edit;
 
   useEffect(() => {
     const temp_categories: CategoryRow[] = [];
@@ -85,18 +87,22 @@ const edit = props.edit;
         break;
       }
     }
-    if (categoryId === -1) throw new Error("Could not find category id.");
+    if (categoryId === -1 || amount === "" || description === "") {
+      Alert.alert("", "Please fill in all fields.");
+      return;
+    }
+
     try {
       await db.runAsync(
         `UPDATE transactions SET type = ?, value = ?, description = ?, category_id = ?, created_at = ? WHERE id = ?`,
         [type, amount, description, categoryId, date.toISOString(), item_id],
       );
-
+      if (props.onClose) {
+        props.onClose();
+      }
       setModalVisible(false);
-    } catch (error) {
-      
-    }
-  } 
+    } catch (error) {}
+  };
 
   const handleAddTransaction = async () => {
     let categoryId: number = -1;
@@ -106,15 +112,20 @@ const edit = props.edit;
         break;
       }
     }
-    if (categoryId === -1) throw new Error("Could not find category id.");
+    if (categoryId === -1 || amount === "" || description === "") {
+      Alert.alert("", "Please fill in all fields.");
+      return;
+    }
     try {
       await db.runAsync(
-        `INSERT INTO transactions (type, value, description, category_id) VALUES
-      (?, ?, ?, ?)`,
-        [type.toLowerCase(), amount, description, categoryId],
+        `INSERT INTO transactions (type, value, description, category_id, created_at) VALUES
+      (?, ?, ?, ?, ?)`,
+        [type, amount, description, categoryId, date.toISOString()],
       );
     } catch (error) {
-      alert("Problem occured, try again.");
+      console.log(error);
+
+      Alert.alert("", "Problem occured, try again.");
     }
 
     // reset form
@@ -239,13 +250,27 @@ const edit = props.edit;
               </SafeAreaProvider>
 
               <View style={styles.buttons}>
-                <Pressable style={styles.button} onPress={edit ? () => handleUpdateTransaction(props.item_id!) : handleAddTransaction}>
-                  <Text style={styles.buttonText}>{edit ? "Update" : "Add"}</Text>
+                <Pressable
+                  style={styles.button}
+                  onPress={
+                    edit
+                      ? () => handleUpdateTransaction(props.item_id!)
+                      : handleAddTransaction
+                  }
+                >
+                  <Text style={styles.buttonText}>
+                    {edit ? "Update" : "Add"}
+                  </Text>
                 </Pressable>
 
                 <Pressable
                   style={[styles.button, styles.cancel]}
-                  onPress={() => setModalVisible(false)}
+                  onPress={() => {
+                    if (props.onClose) {
+                      props.onClose();
+                    }
+                    setModalVisible(false);
+                  }}
                 >
                   <Text style={styles.buttonText}>Cancel</Text>
                 </Pressable>

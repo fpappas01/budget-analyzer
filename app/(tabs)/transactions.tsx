@@ -20,7 +20,9 @@ type RowObj = {
 
 export default function TransactionsScreen() {
   const db = useSQLiteContext();
-  const [transactions, setTransactions] = useState<{ title: string; data: RowObj[] }[]>([]);
+  const [transactions, setTransactions] = useState<
+    { title: string; data: RowObj[] }[]
+  >([]);
   const [renderForm, setRenderForm] = useState(false);
   const [rowObj, setRowObj] = useState<RowObj>();
   useEffect(() => {
@@ -56,8 +58,6 @@ export default function TransactionsScreen() {
   }, [db]);
 
   const handleDelete = (item_id: number) => {
-    
-    
     Alert.alert(
       "Delete transaction",
       "Are you sure you want to delete this transaction?",
@@ -78,7 +78,9 @@ export default function TransactionsScreen() {
               prevSections
                 .map((section) => ({
                   ...section,
-                  data: section.data.filter((transaction) => transaction.id !== item_id),
+                  data: section.data.filter(
+                    (transaction) => transaction.id !== item_id,
+                  ),
                 }))
                 .filter((section) => section.data.length > 0),
             );
@@ -89,7 +91,6 @@ export default function TransactionsScreen() {
   };
 
   const handleEdit = (item_id: number) => {
-    let tmp_obj: RowObj | undefined = undefined;
     for (let section of transactions) {
       for (let transaction of section.data) {
         if (transaction.id === item_id) {
@@ -98,24 +99,42 @@ export default function TransactionsScreen() {
         }
       }
     }
-    
-    console.log(transactions);
-    
   };
 
-  // const handleAddTransaction = async () => {
-    
-  // };
-
   return (
-    
     <View style={styles.container}>
-      {/* <Text style={styles.title}>Transactions</Text> */}
+      {renderForm && (
+        <Form
+          type="expense"
+          category=""
+          description=""
+          amount={""}
+          renderForm={renderForm}
+          edit={true}
+          item_id={rowObj?.id}
+          onClose={() => {
+            setRenderForm(false);
 
-      {renderForm && <Form type="expense" category="" description="" amount={""} renderForm={renderForm} edit={true} item_id={rowObj?.id}/>}
+            setTransactions((prevSections) =>
+              prevSections.map((section) => ({
+                ...section,
+                data: section.data.map((transaction) =>
+                  transaction.id === rowObj?.id
+                    ? {
+                        ...transaction,
+                        description: rowObj.description,
+                        value: rowObj.value,
+                        type: rowObj.type,
+                      }
+                    : transaction,
+                ),
+              })),
+            );
+          }}
+        />
+      )}
 
       <SectionList
-      
         sections={transactions}
         keyExtractor={(item) => item.id.toString()}
         renderSectionHeader={({ section: { title } }) => (
@@ -140,7 +159,6 @@ export default function TransactionsScreen() {
           </View>
         )}
       />
-
     </View>
   );
 }
