@@ -32,7 +32,10 @@ type formProps = {
   renderForm: boolean;
   edit: boolean;
   item_id?: number;
+  date?: Date;
   onClose?: () => void;
+  onUpdate?: (updatedRow: any) => void;
+  onAdd?: (newRow: any) => void;
 };
 
 export default function Form(props: formProps) {
@@ -45,7 +48,7 @@ export default function Form(props: formProps) {
   const [type, setType] = useState<string>(props.type);
   const [categories, setCategories] = useState<CategoryRow[]>([]);
   const [category, setCategory] = useState(props.category);
-  const [date, setDate] = useState<Date>(new Date());
+  const [date, setDate] = useState<Date>(props.date || new Date());
   const [open, setOpen] = React.useState(false);
   const [openType, setOpenType] = useState(false);
   const [openCategory, setOpenCategory] = useState(false);
@@ -95,11 +98,31 @@ export default function Form(props: formProps) {
     try {
       await db.runAsync(
         `UPDATE transactions SET type = ?, value = ?, description = ?, category_id = ?, created_at = ? WHERE id = ?`,
-        [type, amount, description, categoryId, date.toISOString(), item_id],
+        [
+          type,
+          amount.replace(",", "."),
+          description,
+          categoryId,
+          date.toISOString(),
+          item_id,
+        ],
       );
       if (props.onClose) {
         props.onClose();
       }
+      if (props.onUpdate) {
+        props.onUpdate({
+          id: item_id,
+          type: type,
+          value: parseFloat(amount.replace(",", ".")),
+          description: description,
+          category_id: categoryId,
+          category_name: category,
+          complete_date: date.toISOString(),
+          month_year: date.toISOString().slice(0, 7),
+        });
+      }
+
       setModalVisible(false);
     } catch (error) {}
   };
@@ -120,8 +143,31 @@ export default function Form(props: formProps) {
       await db.runAsync(
         `INSERT INTO transactions (type, value, description, category_id, created_at) VALUES
       (?, ?, ?, ?, ?)`,
-        [type, amount, description, categoryId, date.toISOString()],
+        [
+          type,
+          amount.replace(",", "."),
+          description,
+          categoryId,
+          date.toISOString(),
+        ],
       );
+
+      if (props.onClose) {
+        props.onClose();
+      }
+
+      if (props.onAdd) {
+        props.onAdd({
+          id: 0,
+          type: type,
+          value: parseFloat(amount.replace(",", ".")),
+          description: description,
+          category_id: categoryId,
+          category_name: category,
+          complete_date: date.toISOString(),
+          month_year: date.toISOString().slice(0, 7),
+        });
+      }
     } catch (error) {
       console.log(error);
 
@@ -140,6 +186,7 @@ export default function Form(props: formProps) {
       <Button
         onPress={() => {
           setModalVisible(true);
+          setDate(new Date());
         }}
       >
         Add Transaction

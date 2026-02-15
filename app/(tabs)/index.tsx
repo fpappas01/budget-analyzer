@@ -168,7 +168,7 @@ export default function Index() {
           borderRadius: 16,
         }}
       />
-    <Form type="expense" category="" description="" amount="" renderForm={false} edit={false}/>
+    {/* <Form type="expense" category="" description="" amount="" renderForm={false} edit={false}/> */}
     </View>
   );
 }

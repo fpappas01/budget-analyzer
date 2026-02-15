@@ -5,32 +5,52 @@ import {
   SectionList,
   Button,
   Alert,
+  Pressable,
 } from "react-native";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
 import Form from "../components/form";
+import Ionicons from '@expo/vector-icons/Ionicons';
 
 type RowObj = {
   id: number;
   type: "income" | "expense";
   value: number;
   description: string;
+  category_id: number;
+  category_name: string;
+  complete_date: string;
   month_year: string;
 };
 
+function groupByMonth(transactions: RowObj[]) {
+  const grouped: Record<string, RowObj[]> = {};
+
+  transactions.forEach((transaction) => {
+    if (!grouped[transaction.month_year]) {
+      grouped[transaction.month_year] = [];
+    }
+    grouped[transaction.month_year].push(transaction);
+  });
+
+  return Object.keys(grouped).map((month_year) => ({
+    title: month_year,
+    data: grouped[month_year],
+  }));
+}
+
 export default function TransactionsScreen() {
   const db = useSQLiteContext();
-  const [transactions, setTransactions] = useState<
-    { title: string; data: RowObj[] }[]
-  >([]);
+  const [transactions, setTransactions] = useState<RowObj[]>([]);
   const [renderForm, setRenderForm] = useState(false);
+  const [edit, setEdit] = useState(false);
   const [rowObj, setRowObj] = useState<RowObj>();
   useEffect(() => {
     const fetchData = async () => {
       const it = await db.getEachAsync<RowObj>(`
-      SELECT id, type, value, description, STRFTIME('%Y-%m', created_at) as month_year  
-      FROM transactions 
-      ORDER BY created_at DESC;`);
+      SELECT t.id, t.type, t.value, t.description, t.category_id, c.name as category_name, STRFTIME('%Y-%m-%d', t.created_at) as complete_date, STRFTIME('%Y-%m', t.created_at) as month_year  
+      FROM transactions as t JOIN categories as c ON t.category_id = c.id
+      ORDER BY t.created_at DESC;`);
 
       const temp_arr: RowObj[] = [];
 
@@ -38,25 +58,13 @@ export default function TransactionsScreen() {
         temp_arr.push(row);
       }
 
-      const grouped: Record<string, RowObj[]> = {};
-      temp_arr.forEach((transaction) => {
-        if (!grouped[transaction.month_year]) {
-          grouped[transaction.month_year] = [];
-        }
-        grouped[transaction.month_year].push(transaction);
-      });
-
-      const sections = Object.keys(grouped).map((month_year) => ({
-        title: month_year,
-        data: grouped[month_year],
-      }));
-
-      setTransactions(sections);
+      setTransactions(temp_arr);
     };
 
     fetchData();
   }, [db]);
 
+  const sections = groupByMonth(transactions);
   const handleDelete = (item_id: number) => {
     Alert.alert(
       "Delete transaction",
@@ -74,15 +82,8 @@ export default function TransactionsScreen() {
               `DELETE FROM transactions WHERE id = ${item_id};`,
             );
 
-            setTransactions((prevSections) =>
-              prevSections
-                .map((section) => ({
-                  ...section,
-                  data: section.data.filter(
-                    (transaction) => transaction.id !== item_id,
-                  ),
-                }))
-                .filter((section) => section.data.length > 0),
+            setTransactions((prev) =>
+              prev.filter((transaction) => transaction.id !== item_id),
             );
           },
         },
@@ -91,51 +92,51 @@ export default function TransactionsScreen() {
   };
 
   const handleEdit = (item_id: number) => {
-    for (let section of transactions) {
-      for (let transaction of section.data) {
-        if (transaction.id === item_id) {
-          setRowObj(transaction);
-          setRenderForm(true);
-        }
-      }
-    }
+    setEdit(true);
+    const transaction = transactions.find((t) => t.id === item_id);
+    setRowObj(transaction);
+    setRenderForm(true);
   };
 
   return (
     <View style={styles.container}>
       {renderForm && (
         <Form
-          type="expense"
-          category=""
-          description=""
-          amount={""}
+          type={rowObj?.type || "income"}
+          category={rowObj?.category_name || ""}
+          description={rowObj?.description || ""}
+          amount={rowObj?.value.toString() || ""}
+          date={new Date(rowObj?.complete_date || new Date())}
           renderForm={renderForm}
-          edit={true}
+          edit={edit}
           item_id={rowObj?.id}
           onClose={() => {
             setRenderForm(false);
-
-            setTransactions((prevSections) =>
-              prevSections.map((section) => ({
-                ...section,
-                data: section.data.map((transaction) =>
-                  transaction.id === rowObj?.id
-                    ? {
-                        ...transaction,
-                        description: rowObj.description,
-                        value: rowObj.value,
-                        type: rowObj.type,
-                      }
-                    : transaction,
-                ),
-              })),
+          }}
+          onUpdate={(updatedRow) => {
+            setRowObj(updatedRow);
+            setTransactions((prev) =>
+              prev.map((transaction) =>
+                transaction.id === updatedRow.id ? updatedRow : transaction,
+              ),
             );
           }}
+          onAdd={(newRow) => {
+            setTransactions((prev) => [...prev, newRow]);
+            console.log(transactions);
+          }
+        }
         />
       )}
-
+      <Pressable onPress={() => {
+        setRowObj(undefined);
+        setEdit(false);
+        setRenderForm(true);
+      }}>
+        <Ionicons name="add-circle-outline" size={60} color="black" />
+      </Pressable>
       <SectionList
-        sections={transactions}
+        sections={sections}
         keyExtractor={(item) => item.id.toString()}
         renderSectionHeader={({ section: { title } }) => (
           <Text style={styles.monthYearHeader}>{title}</Text>
@@ -153,6 +154,7 @@ export default function TransactionsScreen() {
                 ]}
               >
                 {item.value}
+                {item.category_name}
               </Text>
             </View>
             <Text style={styles.description}>{item.description}</Text>
