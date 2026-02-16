@@ -1,5 +1,4 @@
 import DropDownPicker from "react-native-dropdown-picker";
-
 import React, { useEffect, useState } from "react";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import {
@@ -15,9 +14,17 @@ import {
   Alert,
 } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { DatePickerModal } from "react-native-paper-dates";
+import {
+  DatePickerModal,
+  enGB,
+  registerTranslation,
+} from "react-native-paper-dates";
 import { useSQLiteContext } from "expo-sqlite";
 import { Button } from "react-native-paper";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+
+registerTranslation("en-GB", enGB);
 
 type CategoryRow = {
   id: number;
@@ -36,6 +43,7 @@ type formProps = {
   onClose?: () => void;
   onUpdate?: (updatedRow: any) => void;
   onAdd?: (newRow: any) => void;
+  onDeleteCategory?: () => void;
 };
 
 export default function Form(props: formProps) {
@@ -52,6 +60,7 @@ export default function Form(props: formProps) {
   const [open, setOpen] = React.useState(false);
   const [openType, setOpenType] = useState(false);
   const [openCategory, setOpenCategory] = useState(false);
+  const [categoryModal, setCategoryModal] = useState(false);
   const onDismissSingle = React.useCallback(() => {
     setOpen(false);
   }, [setOpen]);
@@ -77,22 +86,43 @@ export default function Form(props: formProps) {
           });
         });
       setCategories(temp_categories);
-      setCategory(temp_categories[0].name);
+      setCategory(temp_categories[0]?.name);
     };
     fetchCategories();
   }, [db]);
 
+
   const handleUpdateTransaction = async (item_id: number) => {
-    let categoryId: number = -1;
+    let categoryId: number | null = -1;
     for (let el of categories) {
       if (el.name === category) {
         categoryId = el.id;
         break;
       }
     }
-    if (categoryId === -1 || amount === "" || description === "") {
+    if (
+      (categoryId === -1 && category === "") ||
+      amount === "" ||
+      description === ""
+    ) {
       Alert.alert("", "Please fill in all fields.");
       return;
+    }
+    if (categoryId === -1 && category !== "") {
+      try {
+        await db.runAsync(`INSERT INTO categories (name) VALUES (?);`, [
+          category,
+        ]);
+        categoryId = await db
+          .getFirstAsync<CategoryRow>(
+            `SELECT * FROM categories WHERE name = ?;`,
+            [category],
+          )
+          .then((categoryRow) => categoryRow?.id || null);
+      } catch (error) {
+        Alert.alert("", "Problem occured, try again.");
+        return;
+      }
     }
 
     try {
@@ -127,17 +157,66 @@ export default function Form(props: formProps) {
     } catch (error) {}
   };
 
+ const handleDeleteCategory = () => {
+    Alert.alert(
+      "Delete category",
+      `Are you sure you want to delete category ${category}? All transactions associated with this category will also be deleted.`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            await db.runAsync(
+              `DELETE FROM categories WHERE name = ?;`,
+              [category],
+            );
+
+            setCategories((prev) =>
+              prev.filter((cat) => cat.name !== category),
+            );
+            if (props.onDeleteCategory) {
+              props.onDeleteCategory();
+            }
+          },
+        },
+      ],
+    );
+  };
   const handleAddTransaction = async () => {
-    let categoryId: number = -1;
+    let categoryId: number | null = -1;
     for (let el of categories) {
       if (el.name === category) {
         categoryId = el.id;
         break;
       }
     }
-    if (categoryId === -1 || amount === "" || description === "") {
+    if (
+      (categoryId === -1 && category === "") ||
+      amount === "" ||
+      description === ""
+    ) {
       Alert.alert("", "Please fill in all fields.");
       return;
+    }
+    if (categoryId === -1 && category !== "") {
+      try {
+        await db.runAsync(`INSERT INTO categories (name) VALUES (?);`, [
+          category,
+        ]);
+        categoryId = await db
+          .getFirstAsync<CategoryRow>(
+            `SELECT * FROM categories WHERE name = ?;`,
+            [category],
+          )
+          .then((categoryRow) => categoryRow?.id || null);
+      } catch (error) {
+        Alert.alert("", "Problem occured, try again.");
+        return;
+      }
     }
     try {
       await db.runAsync(
@@ -157,8 +236,9 @@ export default function Form(props: formProps) {
       }
 
       if (props.onAdd) {
+        const lastId = await db.getFirstAsync<{id: number}>(`SELECT id from transactions ORDER BY id DESC LIMIT 1;`).then((row) => row?.id || -1);
         props.onAdd({
-          id: 0,
+          id: lastId,
           type: type,
           value: parseFloat(amount.replace(",", ".")),
           description: description,
@@ -183,14 +263,14 @@ export default function Form(props: formProps) {
   };
   return (
     <View style={styles.container}>
-      <Button
+      {/* <Button
         onPress={() => {
           setModalVisible(true);
           setDate(new Date());
         }}
       >
         Add Transaction
-      </Button>
+      </Button> */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -231,22 +311,59 @@ export default function Form(props: formProps) {
                 value={amount}
                 onChangeText={setAmount}
               />
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <Text style={styles.label}>Category</Text>
+                  {!categoryModal && (
+                    <Pressable onPress={() => setCategoryModal(true)}>
+                      <Ionicons
+                        name="add-circle-outline"
+                        size={30}
+                        color="black"
+                      />
+                    </Pressable>
+                  )}
 
-              <Text style={styles.label}>Category</Text>
+                  {categoryModal && (
+                    <Pressable onPress={() => setCategoryModal(false)}>
+                      <Ionicons
+                        name="close-circle-outline"
+                        size={30}
+                        color="black"
+                      />
+                    </Pressable>
+                  )}
+                </View>
+                {categories.length > 0 && (
+                  <Pressable onPress={handleDeleteCategory}>
+                    <MaterialIcons name="delete" size={30} color="black" />
+                  </Pressable>
+                )}
+              </View>
               <View style={styles.container}>
-                <DropDownPicker
-                  open={openCategory}
-                  value={category}
-                  items={categories.map((el) => ({
-                    label: el.name,
-                    value: el.name,
-                  }))}
-                  setOpen={setOpenCategory}
-                  setValue={setCategory}
-                  placeholder="Select a category"
-                  listMode="SCROLLVIEW"
-                  style={styles.dropdown}
-                />
+                {categoryModal && (
+                  <TextInput
+                    style={styles.input}
+                    value={category}
+                    onChangeText={setCategory}
+                  />
+                )}
+                {!categoryModal && (
+                  <DropDownPicker
+                    open={openCategory}
+                    value={category}
+                    items={categories.map((el) => ({
+                      label: el.name,
+                      value: el.name,
+                    }))}
+                    setOpen={setOpenCategory}
+                    setValue={setCategory}
+                    placeholder="Select a category"
+                    listMode="SCROLLVIEW"
+                    style={styles.dropdown}
+                    hideSelectedItemIcon={true}
+                  />
+                )}
               </View>
 
               <Text style={styles.label}>Description</Text>
@@ -366,6 +483,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   input: {
+    width: "100%",
     borderWidth: 1,
     borderColor: "#140505",
     padding: 10,
@@ -390,7 +508,7 @@ const styles = StyleSheet.create({
   },
   label: {
     marginTop: 10,
-    marginBottom: 4,
+    marginBottom: 8,
     fontWeight: "600",
   },
 

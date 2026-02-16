@@ -10,7 +10,7 @@ import {
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
 import Form from "../components/form";
-import Ionicons from '@expo/vector-icons/Ionicons';
+import Ionicons from "@expo/vector-icons/Ionicons";
 
 type RowObj = {
   id: number;
@@ -25,14 +25,13 @@ type RowObj = {
 
 function groupByMonth(transactions: RowObj[]) {
   const grouped: Record<string, RowObj[]> = {};
-
   transactions.forEach((transaction) => {
     if (!grouped[transaction.month_year]) {
       grouped[transaction.month_year] = [];
     }
     grouped[transaction.month_year].push(transaction);
   });
-
+  // console.log(`After the function: ${grouped}`);
   return Object.keys(grouped).map((month_year) => ({
     title: month_year,
     data: grouped[month_year],
@@ -45,6 +44,7 @@ export default function TransactionsScreen() {
   const [renderForm, setRenderForm] = useState(false);
   const [edit, setEdit] = useState(false);
   const [rowObj, setRowObj] = useState<RowObj>();
+  const [countDeleteCategory, setCountDeleteCategory] = useState(0);
   useEffect(() => {
     const fetchData = async () => {
       const it = await db.getEachAsync<RowObj>(`
@@ -62,7 +62,7 @@ export default function TransactionsScreen() {
     };
 
     fetchData();
-  }, [db]);
+  }, [db, countDeleteCategory]);
 
   const sections = groupByMonth(transactions);
   const handleDelete = (item_id: number) => {
@@ -122,18 +122,20 @@ export default function TransactionsScreen() {
             );
           }}
           onAdd={(newRow) => {
-            setTransactions((prev) => [...prev, newRow]);
-            console.log(transactions);
-          }
-        }
+            setTransactions((prev) => [newRow, ...prev]);
+          }}
+          onDeleteCategory={() => setCountDeleteCategory((prev) => prev + 1)}
         />
       )}
-      <Pressable onPress={() => {
-        setRowObj(undefined);
-        setEdit(false);
-        setRenderForm(true);
-      }}>
-        <Ionicons name="add-circle-outline" size={60} color="black" />
+      <Pressable
+        onPress={() => {
+          setRowObj(undefined);
+          setEdit(false);
+          setRenderForm(true);
+          
+        }}
+      >
+        <Ionicons name="add-circle-outline" size={60} color="#f9fafb" />
       </Pressable>
       <SectionList
         sections={sections}
@@ -143,21 +145,34 @@ export default function TransactionsScreen() {
         )}
         renderItem={({ item }) => (
           <View style={styles.card}>
-            <View style={styles.row}>
-              {/* <Text style={styles.type}>{item.type}</Text> */}
-              <Button title="Edit" onPress={() => handleEdit(item.id)} />
-              <Button title="Delete" onPress={() => handleDelete(item.id)} />
-              <Text
-                style={[
-                  styles.value,
-                  { color: item.type === "income" ? "#2e7d32" : "#aa0619" },
-                ]}
-              >
-                {item.value}
-                {item.category_name}
-              </Text>
+            <View style={styles.topRow}>
+              <View>
+                <Text style={styles.category}>{item.category_name}</Text>
+                <Text style={styles.description}>{item.description}</Text>
+              </View>
+
+              <View style={styles.rightSide}>
+                <Text
+                  style={[
+                    styles.value,
+                    { color: item.type === "income" ? "#2e7d32" : "#c62828" },
+                  ]}
+                >
+                  {item.type === "income" ? "+" : "-"}
+                  {item.value}€
+                </Text>
+
+                <View style={styles.actions}>
+                  <Pressable onPress={() => handleEdit(item.id)}>
+                    <Ionicons name="create-outline" size={20} color="#444" />
+                  </Pressable>
+
+                  <Pressable onPress={() => handleDelete(item.id)}>
+                    <Ionicons name="trash-outline" size={20} color="#c62828" />
+                  </Pressable>
+                </View>
+              </View>
             </View>
-            <Text style={styles.description}>{item.description}</Text>
           </View>
         )}
       />
@@ -168,8 +183,49 @@ export default function TransactionsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#9c7676",
+    backgroundColor: "#1f2b44",
     padding: 20,
+  },
+
+  card: {
+    backgroundColor: "#e4d9d9",
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 12,
+    elevation: 3,
+  },
+
+  topRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+
+  category: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#222",
+    marginBottom: 2,
+  },
+
+  description: {
+    fontSize: 13,
+    color: "#777",
+  },
+
+  rightSide: {
+    alignItems: "flex-end",
+  },
+
+  value: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 6,
+  },
+
+  actions: {
+    flexDirection: "row",
+    gap: 12,
   },
 
   title: {
@@ -188,14 +244,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
 
-  card: {
-    backgroundColor: "#fff",
-    padding: 14,
-    borderRadius: 10,
-    marginBottom: 10,
-    elevation: 3,
-  },
-
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -205,16 +253,5 @@ const styles = StyleSheet.create({
   type: {
     fontSize: 16,
     fontWeight: "600",
-  },
-
-  value: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#2e7d32",
-  },
-
-  description: {
-    fontSize: 14,
-    color: "#666",
   },
 });

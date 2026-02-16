@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {  Dimensions, StyleSheet, Text, View } from "react-native";
+import { Dimensions, StyleSheet, Text, View } from "react-native";
 import { LineChart } from "react-native-chart-kit";
 import { useSQLiteContext } from "expo-sqlite";
 
@@ -11,182 +11,163 @@ const screenWidth = Dimensions.get("window").width;
 type RowObj = {
   type: "income" | "expense";
   total: number;
-  created_at: string;
+  month: string;
 };
-
-type Inputs = {
-  example: string
-  exampleRequired: string
-}
-
 
 
 export default function Index() {
-  const [income, setIncome] = useState<number[]>([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
-  const [expenses, setExpenses] = useState<number[]>([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+  const [income, setIncome] = useState<number[]>([
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  ]);
+  const [expenses, setExpenses] = useState<number[]>([
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  ]);
   const [year, setYear] = useState(new Date().getFullYear());
 
   const db = useSQLiteContext();
 
   useEffect(() => {
     (async () => {
-      const temp_arr_expenses: number[] = [];
-    const temp_arr_incomes: number[] = [];
+      const temp_arr_expenses: number[] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+      const temp_arr_incomes: number[] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
       await db
-      .getAllAsync<RowObj>(
-        `
-      SELECT STRFTIME('%m', created_at) as month, type, SUM(value) as total
+        .getAllAsync<RowObj>(
+          `
+      SELECT type, SUM(value) as total, STRFTIME('%m', created_at) as month
       FROM transactions 
       WHERE created_at >= '${year}-01-01' AND created_at <= '${year}-12-31'
       GROUP BY month, type
       ORDER BY month ASC;
   `,
-      )
-      .then((rows) => {
-        rows.forEach((row) => {
-          if (row.type === "expense") {
-            temp_arr_expenses.push(row.total);
-          } else temp_arr_incomes.push(row.total);
+        )
+        .then((rows) => {
+          rows.forEach((row) => {
+            if (row.type === "expense") {
+              temp_arr_expenses[parseInt(row.month) - 1] = row.total;
+            } else temp_arr_incomes[parseInt(row.month) - 1] = row.total;
+          });
         });
-      });
 
-    setIncome(temp_arr_incomes);
-    setExpenses(temp_arr_expenses);
+      if (temp_arr_expenses.length !== 0) {
+        setExpenses(temp_arr_expenses);
+      }
+      if (temp_arr_incomes.length !== 0) {
+        setIncome(temp_arr_incomes);
+      }
     })();
   }, [db, year]);
 
-  //   const {
-  //   register,
-  //   handleSubmit,
-  //   watch,
-  //   formState: { errors },
-  // } = useForm<Inputs>()
+const expenseChartConfig = {
+  backgroundGradientFrom: "#634a4a",
+  backgroundGradientTo: "#e4d9d9",
+  decimalPlaces: 2,
+  color: (opacity = 1) => `rgba(239, 68, 68, ${opacity})`, // red
+  labelColor: (opacity = 1) => `rgba(255,255,255,${opacity})`,
+  propsForDots: {
+    r: "5",
+    strokeWidth: "2",
+    stroke: "#ce1a1a",
+  },
+};
 
+const incomeChartConfig = {
+  backgroundGradientFrom: "#634a4a",
+  backgroundGradientTo: "#e4d9d9",
+  decimalPlaces: 2,
+  color: (opacity = 1) => `rgba(34,197,94, ${opacity})`, // green
+  labelColor: (opacity = 1) => `rgba(255,255,255,${opacity})`,
+  propsForDots: {
+    r: "5",
+    strokeWidth: "2",
+    stroke: "#027c2f",
+  },
+};
+ return (
+  <View style={styles.container}>
+    <Text style={styles.screenTitle}>Yearly Financial Overview</Text>
 
-  return (
-    <View style={styles.container}>
-
-      <Text style={styles.title}>{`Expenses (${year})`}</Text>
+    <View style={styles.card}>
+      <Text style={styles.expenseTitle}>{`Expenses (${year})`}</Text>
       <LineChart
         data={{
           labels: [
-            "01",
-            "02",
-            "03",
-            "04",
-            "05",
-            "06",
-            "07",
-            "08",
-            "09",
-            "10",
-            "11",
-            "12",
+            "01","02","03","04","05","06",
+            "07","08","09","10","11","12",
           ],
-          datasets: [
-            {
-              data: expenses,
-            },
-          ],
+          datasets: [{ data: expenses }],
         }}
-        width={screenWidth}
-        height={220}
-        // yAxisLabel=""
-        // yAxisSuffix="k"
-        yAxisInterval={1} // optional, defaults to 1
-        chartConfig={{
-          backgroundColor: "#9e846d",
-          backgroundGradientFrom: "#584328",
-          backgroundGradientTo: "#8d7249",
-          decimalPlaces: 2, // optional, defaults to 2dp
-          color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-          labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-          style: {
-            borderRadius: 16,
-          },
-          propsForDots: {
-            r: "6",
-            strokeWidth: "2",
-            stroke: "#ffa726",
-          },
-        }}
+        width={screenWidth - 32}
+        height={250}
+        yAxisInterval={1}
+        chartConfig={expenseChartConfig}
         bezier
-        style={{
-          marginVertical: 8,
-          borderRadius: 16,
-        }}
+        style={styles.chart}
+        onDataPointClick={(data) => console.log(data.value)}
       />
-
-      <Text style={styles.title}>{`Income (${year})`}</Text>
-
-      <LineChart
-        data={{
-          labels: [
-            "01",
-            "02",
-            "03",
-            "04",
-            "05",
-            "06",
-            "07",
-            "08",
-            "09",
-            "10",
-            "11",
-            "12",
-          ],
-          datasets: [
-            {
-              data: income,
-            },
-          ],
-        }}
-        width={screenWidth}
-        height={220}
-        // yAxisLabel=""
-        // yAxisSuffix=""
-        yAxisInterval={1} // optional, defaults to 1
-        chartConfig={{
-          backgroundColor: "#9e846d",
-          backgroundGradientFrom: "#584328",
-          backgroundGradientTo: "#8d7249",
-          decimalPlaces: 2, // optional, defaults to 2dp
-          color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-          labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-          style: {
-            borderRadius: 16,
-          },
-          propsForDots: {
-            r: "6",
-            strokeWidth: "2",
-            stroke: "#ffa726",
-          },
-        }}
-        bezier
-        style={{
-          marginVertical: 8,
-          borderRadius: 16,
-        }}
-      />
-    {/* <Form type="expense" category="" description="" amount="" renderForm={false} edit={false}/> */}
     </View>
-  );
+
+    <View style={styles.card}>
+      <Text style={styles.incomeTitle}>{`Income (${year})`}</Text>
+      <LineChart
+        data={{
+          labels: [
+            "01","02","03","04","05","06",
+            "07","08","09","10","11","12",
+          ],
+          datasets: [{ data: income }],
+        }}
+        width={screenWidth - 32}
+        height={250}
+        yAxisInterval={1}
+        chartConfig={incomeChartConfig}
+        bezier
+        style={styles.chart}
+        onDataPointClick={(data) => console.log(data.index)}w
+        
+      />
+    </View>
+  </View>
+);
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#1f2b44",
     padding: 16,
-    backgroundColor: "#9c7676",
   },
-  title: {
-    fontSize: 26,
+  screenTitle: {
+    fontSize: 28,
     fontWeight: "bold",
-    color: "#fff",
+    marginBottom: 20,
+    color: "#f9fafb",
+  },
+  card: {
+    // backgroundColor: "#e4d9d9",
+    // borderRadius: 18,
+    // padding: 16,
+    // marginBottom: 20,
+    // shadowColor: "#000",
+    // shadowOpacity: 0.4,
+    // shadowRadius: 12,
+    // shadowOffset: { width: 0, height: 6 },
+    // elevation: 6,
+    marginBottom: 50,
+  },
+  expenseTitle: {
+    fontSize: 20,
+    fontWeight: "600",
     marginBottom: 10,
-    textAlign: "center",
+    color: "#ef4444",
+  },
+  incomeTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    marginBottom: 10,
+    color: "#22c55e",
   },
   chart: {
     borderRadius: 16,
+    height: 220,
   },
 });

@@ -30,21 +30,6 @@ export default function TabLayout() {
           ),
         }}
       />
-      {/* <Tabs.Screen 
-        name="analysis"
-        options={
-          {
-            title: "Analysis",
-            tabBarIcon: ({ color, focused }) => ( 
-              <Ionicons
-                name={focused ? "bar-chart" : "bar-chart-outline"}
-                size={24}
-                color={color}
-              />
-            ),
-          }
-        }
-      /> */}
     </Tabs>
   );
 }
