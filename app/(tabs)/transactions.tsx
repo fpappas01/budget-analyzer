@@ -25,18 +25,30 @@ type RowObj = {
 
 function groupByMonth(transactions: RowObj[]) {
   const grouped: Record<string, RowObj[]> = {};
+
   transactions.forEach((transaction) => {
     if (!grouped[transaction.month_year]) {
       grouped[transaction.month_year] = [];
     }
     grouped[transaction.month_year].push(transaction);
   });
-  // console.log(`After the function: ${grouped}`);
-  return Object.keys(grouped).map((month_year) => ({
-    title: month_year,
-    data: grouped[month_year],
-  }));
+
+  return Object.keys(grouped)
+    .sort((a, b) => {
+      const [yearA, monthA] = a.split("-").map(Number);
+      const [yearB, monthB] = b.split("-").map(Number);
+
+      if (yearA !== yearB) {
+        return yearB - yearA; 
+      }
+      return monthB - monthA; 
+    })
+    .map((month_year) => ({
+      title: month_year,
+      data: grouped[month_year],
+    }));
 }
+
 
 export default function TransactionsScreen() {
   const db = useSQLiteContext();
@@ -47,6 +59,10 @@ export default function TransactionsScreen() {
   const [countDeleteCategory, setCountDeleteCategory] = useState(0);
   useEffect(() => {
     const fetchData = async () => {
+      // const first = await db.execAsync(
+      //   `DELETE FROM transactions;
+      //    DELETE FROM categories;`
+      // );
       const it = await db.getEachAsync<RowObj>(`
       SELECT t.id, t.type, t.value, t.description, t.category_id, c.name as category_name, STRFTIME('%Y-%m-%d', t.created_at) as complete_date, STRFTIME('%Y-%m', t.created_at) as month_year  
       FROM transactions as t JOIN categories as c ON t.category_id = c.id

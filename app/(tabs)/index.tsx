@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Dimensions, StyleSheet, Text, View } from "react-native";
+import { Alert, Dimensions, StyleSheet, Text, View } from "react-native";
 import { LineChart } from "react-native-chart-kit";
 import { useSQLiteContext } from "expo-sqlite";
 
@@ -13,6 +13,22 @@ type RowObj = {
   total: number;
   month: string;
 };
+
+const numsToMonths: Map<number, string> = new Map([
+  [0, "January"],
+  [1, "February"],
+  [2, "March"],
+  [3, "April"],
+  [4, "May"],
+  [5, "June"],
+  [6, "July"],
+  [7, "August"],
+  [8, "September"],
+  [9, "October"],
+  [10, "November"],
+  [11, "December"],
+]);
+
 
 
 export default function Index() {
@@ -102,7 +118,9 @@ const incomeChartConfig = {
         chartConfig={expenseChartConfig}
         bezier
         style={styles.chart}
-        onDataPointClick={(data) => console.log(data.value)}
+        onDataPointClick={(data) => {
+          Alert.alert(`For month ${numsToMonths.get(data.index)} your total expenses were: ${data.value}€`);
+        }}
       />
     </View>
 
@@ -122,7 +140,9 @@ const incomeChartConfig = {
         chartConfig={incomeChartConfig}
         bezier
         style={styles.chart}
-        onDataPointClick={(data) => console.log(data.index)}w
+        onDataPointClick={(data) => {
+          Alert.alert(`For month ${numsToMonths.get(data.index)} your total income was: ${data.value}€`);
+        }}
         
       />
     </View>
