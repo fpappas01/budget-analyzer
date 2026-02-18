@@ -78,7 +78,7 @@ export default function TransactionsScreen() {
       for await (const row of it) {
         temp_arr.push(row);
       }
-      console.log(temp_arr);
+
       
       setTransactions(temp_arr);
     };
