@@ -19,7 +19,10 @@ type TransactionsState = {
   deleteTransaction: (transaction_id: number) => void;
 };
 
-export const useTransactionStore = create<TransactionsState>((set) => ({
+
+
+
+ export const useTransactionStore = create<TransactionsState>((set) => ({
   transactions: [],
   setTransactions: (transactions) => set({ transactions }),
   addTransaction: (transaction) =>
@@ -27,7 +30,7 @@ export const useTransactionStore = create<TransactionsState>((set) => ({
   updateTransaction: (transaction) =>
     set((state) => ({
       transactions: state.transactions.map((tx) =>
-        transaction.id === transaction.id ? transaction : transaction,
+        transaction.id === tx.id ? transaction : transaction,
       ),
     })),
   deleteTransaction: (transaction_id) =>

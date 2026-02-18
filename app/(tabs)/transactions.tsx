@@ -3,7 +3,6 @@ import {
   Text,
   StyleSheet,
   SectionList,
-  Button,
   Alert,
   Pressable,
 } from "react-native";
@@ -11,6 +10,7 @@ import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
 import Form from "../components/form";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { useTransactionStore } from "../../stores/TransactionStore";
 
 type RowObj = {
   id: number;
@@ -52,11 +52,16 @@ function groupByMonth(transactions: RowObj[]) {
 
 export default function TransactionsScreen() {
   const db = useSQLiteContext();
-  const [transactions, setTransactions] = useState<RowObj[]>([]);
+  // const [transactions, setTransactions] = useState<RowObj[]>([]);
+  const transactions = useTransactionStore((state) => state.transactions);
   const [renderForm, setRenderForm] = useState(false);
   const [edit, setEdit] = useState(false);
   const [rowObj, setRowObj] = useState<RowObj>();
   const [countDeleteCategory, setCountDeleteCategory] = useState(0);
+  const deleteTransaction = useTransactionStore((state) => state.deleteTransaction);
+  const setTransactions = useTransactionStore((state) => state.setTransactions);
+  const updateTransaction = useTransactionStore((state) => state.updateTransaction);
+  const addTransaction = useTransactionStore((state) => state.addTransaction);
   useEffect(() => {
     const fetchData = async () => {
       // const first = await db.execAsync(
@@ -73,7 +78,8 @@ export default function TransactionsScreen() {
       for await (const row of it) {
         temp_arr.push(row);
       }
-
+      console.log(temp_arr);
+      
       setTransactions(temp_arr);
     };
 
@@ -81,6 +87,7 @@ export default function TransactionsScreen() {
   }, [db, countDeleteCategory]);
 
   const sections = groupByMonth(transactions);
+  
   const handleDelete = (item_id: number) => {
     Alert.alert(
       "Delete transaction",
@@ -98,9 +105,7 @@ export default function TransactionsScreen() {
               `DELETE FROM transactions WHERE id = ${item_id};`,
             );
 
-            setTransactions((prev) =>
-              prev.filter((transaction) => transaction.id !== item_id),
-            );
+            deleteTransaction(item_id);
           },
         },
       ],
@@ -131,14 +136,10 @@ export default function TransactionsScreen() {
           }}
           onUpdate={(updatedRow) => {
             setRowObj(updatedRow);
-            setTransactions((prev) =>
-              prev.map((transaction) =>
-                transaction.id === updatedRow.id ? updatedRow : transaction,
-              ),
-            );
+            updateTransaction(updatedRow);
           }}
           onAdd={(newRow) => {
-            setTransactions((prev) => [newRow, ...prev]);
+            addTransaction(newRow);
           }}
           onDeleteCategory={() => setCountDeleteCategory((prev) => prev + 1)}
         />
