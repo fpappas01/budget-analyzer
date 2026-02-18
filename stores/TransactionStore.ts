@@ -30,7 +30,7 @@ type TransactionsState = {
   updateTransaction: (transaction) =>
     set((state) => ({
       transactions: state.transactions.map((tx) =>
-        transaction.id === tx.id ? transaction : transaction,
+        transaction.id === tx.id ? transaction : tx,
       ),
     })),
   deleteTransaction: (transaction_id) =>
