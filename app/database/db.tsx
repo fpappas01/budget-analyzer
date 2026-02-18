@@ -11,13 +11,13 @@ export default function Db() {
     //     DROP TABLE IF EXISTS categories;
 
     //     CREATE TABLE IF NOT EXISTS categories (
-    //     id INTEGER PRIMARY KEY,
+    //     id INTEGER PRIMARY KEY AUTOINCREMENT,
     //     name TEXT NOT NULL,
     //     created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
     //     );
 
     //     CREATE TABLE IF NOT EXISTS transactions (
-    //     id INTEGER PRIMARY KEY,
+    //     id INTEGER PRIMARY KEY AUTOINCREMENT,
     //     type TEXT NOT NULL,
     //     value REAL NOT NULL,
     //     description TEXT,
